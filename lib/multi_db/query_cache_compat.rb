@@ -8,6 +8,7 @@ module MultiDb
     def columns(*a, &b)
       send_to_current(:columns, *a, &b)
     end
+=begin        
     def insert(*a, &b)
       send_to_master(:insert, *a, &b)
     end
@@ -17,5 +18,6 @@ module MultiDb
     def delete(*a, &b)
       send_to_master(:delete, *a, &b)
     end
+=end
   end
 end
