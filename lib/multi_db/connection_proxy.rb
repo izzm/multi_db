@@ -40,6 +40,9 @@ module MultiDb
       # This will not affect failover if a master is unavailable.
       attr_accessor :sticky_slave
       
+      # slaves acts as master
+      attr_accessor :multi_master
+      
       # if master should be the default db
       attr_accessor :defaults_to_master
 
@@ -49,6 +52,7 @@ module MultiDb
         self.master_models ||= DEFAULT_MASTER_MODELS
         self.environment   ||= (defined?(Rails) ? Rails.env : 'development')
         self.sticky_slave  ||= false
+        self.multi_master  ||= false
         
         master = ActiveRecord::Base
         slaves = init_slaves
@@ -127,7 +131,9 @@ module MultiDb
     end
   
   
-    def with_slave
+    def with_slave(type = :current)
+      next_reader! if type == :next
+        
       self.current = slave
       self.master_depth -= 1
       yield
@@ -137,7 +143,7 @@ module MultiDb
     end
     
     def transaction(start_db_transaction = true, &block)
-      with_master { @master.retrieve_connection.transaction(start_db_transaction, &block) }
+      send(target_method(:transaction), :transaction, start_db_transaction, &block)
     end
 
     # Calls the method on master/slave and dynamically creates a new
@@ -164,6 +170,7 @@ module MultiDb
       self.instance_eval %Q{
         def #{method}(*args, &block)
           #{'next_reader!' unless self.class.sticky_slave || unsafe?(method)}
+          #ActiveRecord::Base.logger.debug "[MULTIDB] use \#{current} for #{method} via #{target_method(method)}"
           #{target_method(method)}(:#{method}, *args, &block)
         end
       }, __FILE__, __LINE__
@@ -206,7 +213,7 @@ module MultiDb
     end
     
     def unsafe?(method)
-      !SAFE_METHODS.include?(method)
+      self.class.multi_master ? false : !SAFE_METHODS.include?(method)
     end
     
     def master?
