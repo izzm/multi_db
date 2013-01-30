@@ -132,7 +132,11 @@ module MultiDb
   
   
     def with_slave(type = :current)
-      next_reader! if type == :next
+      if type == :next
+        next_reader!
+      elsif type.is_a?(Integer)
+        set_reader!(n)
+      end
         
       self.current = slave
       self.master_depth -= 1
@@ -162,6 +166,11 @@ module MultiDb
     rescue Scheduler::NoMoreItems
       logger.warn "[MULTIDB] All slaves are blacklisted. Reading from master"
       self.current = @master
+    end
+    
+    def set_reader!(n)
+      return if  master_depth > 0  # don't if in with_master block
+      self.current = @slaves.set(n)
     end
 
     protected
