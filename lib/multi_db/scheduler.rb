@@ -31,6 +31,12 @@ module MultiDb
       current
     end
     
+    def set(new_index)
+      self.current_index = new_index % @n
+      
+      current
+    end
+    
     protected
     
     def next_index!
