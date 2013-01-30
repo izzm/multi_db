@@ -135,7 +135,7 @@ module MultiDb
       if type == :next
         next_reader!
       elsif type.is_a?(Integer)
-        set_reader!(n)
+        set_reader!(type)
       end
         
       self.current = slave
